@@ -1,0 +1,60 @@
+package main
+
+import (
+	"fmt"
+	"sync"
+	"time"
+)
+
+// Worker represents a worker that performs some task
+type Worker struct {
+	id int
+}
+
+// Task represents a task that needs to be performed
+type Task struct {
+	id int
+	data string
+}
+
+// PerformTask performs a task
+func (w *Worker) PerformTask(task Task) {
+	fmt.Printf("Worker %d: Starting task %d with data '%s'\n", w.id, task.id, task.data)
+	time.Sleep(2 * time.Second) // simulate some work
+	fmt.Printf("Worker %d: Finished task %d with data '%s'\n", w.id, task.id, task.data)
+}
+
+func main() {
+	var wg sync.WaitGroup
+	numWorkers := 5
+	numTasks := 10
+
+	// Create a channel to receive tasks
+	taskChan := make(chan Task)
+
+	// Create workers
+	workers := make([]*Worker, numWorkers)
+	for i := 0; i < numWorkers; i++ {
+		workers[i] = &Worker{id: i}
+		wg.Add(1)
+		go func(w *Worker) {
+			defer wg.Done()
+			for task := range taskChan {
+				w.PerformTask(task)
+			}
+		}(workers[i])
+	}
+
+	// Create tasks
+	for i := 0; i < numTasks; i++ {
+		taskChan <- Task{id: i, data: fmt.Sprintf("Task %d data", i)}
+	}
+
+	// Close the task channel to signal that no more tasks will be sent
+	close(taskChan)
+
+	// Wait for all workers to finish
+	wg.Wait()
+
+	fmt.Println("All tasks finished")
+}
